@@ -1,0 +1,135 @@
+\documentclass{elsarticle}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{hyperref}
+\usepackage{tikz}
+
+\title{A second order unstructured finite volume method for incompressible Navier-Stokes equations using face based constrained least-squares procedure}
+\author{Dasika Sunder}
+\date{}
+
+\begin{document}
+	
+	\begin{frontmatter}
+
+
+	\begin{abstract}
+		This paper discusses the use of face based constrained least-squares procedure for solving incompressible Navier-Stokes equations. Although reconstruction is performed on faces of the mesh, the underlying finite volume method is still cell centered.  This arrangement of reconstruction is particularly advantageous in implementation     
+	\end{abstract}
+	
+	\end{frontmatter}
+
+	
+	\section{Methodology}
+	
+	
+	
+	\subsection{Constrained Least Squares}
+	The constrained least squares is \cite{boyd2018introduction} used for reconstruction \cite{gradient-calculation-methods} to solve incompressible Navier-Stokes \cite{KIM2000411}
+	
+	\subsection{Reconstruction for interior faces}
+	\noindent The constrained least-squares system for reconstruction on an interior face of the mesh is
+	\begin{equation}
+		\begin{bmatrix}
+			2(N_c-2) & 2\sum \Delta x_i & 2\sum \Delta y_i & 1 & 1\\
+			2\sum \Delta x_i & 2\sum \Delta x_i^2 & 2\sum \Delta x_i \Delta y_i & \Delta x_1 & \Delta x_2 \\
+			2\sum \Delta y_i & 2\sum \Delta x_i \Delta y_i & 2\sum \Delta y_i^2 & \Delta y_1 & \Delta y_2 \\
+			1 & \Delta x_1 & \Delta y_1 & 0 & 0 \\
+			1 & \Delta x_2 & \Delta y_2 & 0 & 0 \\
+		\end{bmatrix}
+		\begin{bmatrix}
+			\phi_0 \\
+			\phi_x \\
+			\phi_y \\
+			\hat{z}_1 \\ 
+			\hat{z}_2
+		\end{bmatrix}	
+		= 
+		\begin{bmatrix}
+			2\sum \phi_i \\
+			2\sum \Delta x_i \phi_i  \\ 
+			2\sum \Delta y_i \phi_i \\
+			\phi_1 \\
+			\phi_2 \\ 
+		\end{bmatrix}	
+	\end{equation}  
+	
+	\subsection{Reconstruction for faces on Dirichlet boundaries}
+	
+	\begin{equation}
+		\begin{bmatrix}
+			2(N_c-2) & 2\sum \Delta x_i & 2\sum \Delta y_i & 1 & 1\\
+			2\sum \Delta x_i & 2\sum \Delta x_i^2 & 2\sum \Delta x_i \Delta y_i & \Delta x_1 & 0 \\
+			2\sum \Delta y_i & 2\sum \Delta x_i \Delta y_i & 2\sum \Delta y_i^2 & \Delta y_1 & 0 \\
+			1 & \Delta x_1 & \Delta y_1 & 0 & 0 \\
+			1 & 0 & 0 & 0 & 0 \\
+		\end{bmatrix}
+		\begin{bmatrix}
+			\phi_0 \\
+			\phi_x \\
+			\phi_y \\
+			\hat{z}_1 \\ 
+			\hat{z}_2
+		\end{bmatrix}	
+		= 
+		\begin{bmatrix}
+			2\sum \phi_i \\
+			2\sum \Delta x_i \phi_i  \\ 
+			2\sum \Delta y_i \phi_i \\
+			\phi_1 \\
+			\phi_b \\ 
+		\end{bmatrix}	
+	\end{equation} 
+	
+	\subsection{Reconstruction for faces on Neumann boundaries}
+	
+	\begin{equation}
+		\begin{bmatrix}
+			2(N_c-2) & 2\sum \Delta x_i & 2\sum \Delta y_i & 1 & 0\\
+			2\sum \Delta x_i & 2\sum \Delta x_i^2 & 2\sum \Delta x_i \Delta y_i & \Delta x_1 & n_x \\
+			2\sum \Delta y_i & 2\sum \Delta x_i \Delta y_i & 2\sum \Delta y_i^2 & \Delta y_1 & n_y \\
+			1 & \Delta x_1 & \Delta y_1 & 0 & 0 \\
+			0 & n_x & n_y & 0 & 0 \\
+		\end{bmatrix}
+		\begin{bmatrix}
+			\phi_0 \\
+			\phi_x \\
+			\phi_y \\
+			\hat{z}_1 \\ 
+			\hat{z}_2
+		\end{bmatrix}	
+		= 
+		\begin{bmatrix}
+			2\sum \phi_i \\
+			2\sum \Delta x_i \phi_i  \\ 
+			2\sum \Delta y_i \phi_i \\
+			\phi_1 \\
+			\phi_b \\ 
+		\end{bmatrix}	
+	\end{equation} 
+	
+	All summations in the matrix above are from $i = 3$ to $N_c$
+	
+	\begin{figure}
+		\centering
+		
+		\begin{tikzpicture}
+			%\draw[help lines] grid(3,3);
+			\draw (0,0) -- (4,0) -- (2,{2*sqrt(3)}) -- cycle;
+		\end{tikzpicture}
+		
+		\caption{Arrangement of variables in a cell}
+		
+	\end{figure}
+	
+
+	
+	
+	
+	\bibliographystyle{plain}
+	\bibliography{references}
+
+	
+	
+\end{document}
