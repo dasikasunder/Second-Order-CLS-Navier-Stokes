@@ -259,7 +259,8 @@ void assemble_gradient_term_dirichlet_boundary_face(int iface, const triangulati
     double area = mesh->face[iface].area;
 
     coeffs[0] = -area*(clsq->sol[0][1]*nx + clsq->sol[0][2]*ny); // Contribution to c0 cell
-    coeffs[1] = -area*(clsq->sol[1][1]*nx + clsq->sol[1][2]*ny); // Contribution of boundary condition
+    coeffs[1] =  area*(clsq->sol[1][1]*nx + clsq->sol[1][2]*ny); // Contribution of boundary condition - No - sign here, so that
+                                                                 // contribution is added to the RHS
 
     for (icell_local = 0; icell_local < mesh->face[iface].nvnb; ++icell_local) // Contribution of vertex neighbouring cells
         coeffs[icell_local+2] = -area*(clsq->sol[icell_local+2][1]*nx + clsq->sol[icell_local+2][2]*ny);

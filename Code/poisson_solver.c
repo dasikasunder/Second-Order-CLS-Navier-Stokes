@@ -24,6 +24,11 @@ poisson_solver* poisson_solver_allocate(const char* mesh_file) {
     lis_vector_create(0,&ps->u); lis_vector_set_size(ps->u,0,ps->mesh->n_cell);
     lis_matrix_create(0,&ps->A); lis_matrix_set_size(ps->A,0,ps->mesh->n_cell);
 
+    lis_solver_create(&ps->solver);
+
+    lis_solver_set_option("-i cg -p ilu", ps->solver);
+    lis_solver_set_option("-tol 1.0e-10 -maxiter 1000", ps->solver);
+
     return ps;
 }
 
@@ -38,6 +43,9 @@ void poisson_solver_free(poisson_solver* ps) {
 
     free_1d(ps->phi);
     free_1d(ps->clsq);
+    lis_vector_destroy(ps->u); lis_vector_destroy(ps->f);
+    lis_matrix_destroy(ps->A);
+    lis_solver_destroy(ps->solver);
     triangulation_free(ps->mesh);
 }
 
@@ -63,6 +71,7 @@ void poisson_solver_construct_clsq_data(poisson_solver* ps) {
 void poisson_solver_assemble_system(poisson_solver* ps) {
 
     int iface, iowner, ineighbor, icell, icell_local;
+    double xf, yf, phi_b;
     double coeffs[25];
 
     // Loop over all interior faces
@@ -84,6 +93,8 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
         lis_matrix_set_value(LIS_ADD_VALUE, ineighbor, iowner,    -coeffs[0], ps->A);
         lis_matrix_set_value(LIS_ADD_VALUE, ineighbor, ineighbor, -coeffs[1], ps->A);
 
+        // Add contribution of vertex neighbour cells to owner and neighbour cells
+
         for (icell_local = 0; icell_local < ps->mesh->face[iface].nvnb; ++icell_local) {
 
             icell = ps->mesh->face[iface].vnb[icell_local];
@@ -97,6 +108,8 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
 
     for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface) {
 
+        xf = ps->mesh->face[iface].x[0]; yf = ps->mesh->face[iface].x[1];
+
         assemble_gradient_term_dirichlet_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
 
         iowner = ps->mesh->face[iface].c[0];
@@ -105,13 +118,18 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
 
         lis_matrix_set_value(LIS_ADD_VALUE, iowner, iowner,    coeffs[0], ps->A);
 
+        // Add contribition of boundary condition to RHS
+
+        phi_b = poisson_solver_exact_solution(xf, yf);
+
+        lis_vector_set_value(LIS_ADD_VALUE, iowner, coeffs[1]*phi_b, ps->f);
+
         for (icell_local = 0; icell_local < ps->mesh->face[iface].nvnb; ++icell_local) {
 
             icell = ps->mesh->face[iface].vnb[icell_local];
             lis_matrix_set_value(LIS_ADD_VALUE, iowner,    icell,  coeffs[icell_local+2], ps->A);
         }
     }
-
 
     lis_matrix_set_type(ps->A,LIS_MATRIX_CSR);
     lis_matrix_assemble(ps->A);
@@ -150,7 +168,7 @@ void poisson_solver_plot_vtk(poisson_solver* ps, const char* out_file_name) {
 
 void poisson_solver_run(poisson_solver* ps) {
 
-    int icell;
+    int icell, n_iter;
     double xc, yc, vol;
 
     poisson_solver_construct_clsq_data(ps); // Calculate CLSQ data for all the faces
@@ -170,22 +188,11 @@ void poisson_solver_run(poisson_solver* ps) {
     } // Cell loop
 
     // Solve system
-    int iter;
 
-    LIS_SOLVER solver;
-    lis_solver_create(&solver);
+    lis_solve(ps->A,ps->f,ps->u,ps->solver);
+    lis_solver_get_iter(ps->solver, &n_iter);
 
-    lis_solver_set_option("-i cg -p none", solver);
-    lis_solver_set_option("-tol 1.0e-12", solver);
-
-    lis_solve(ps->A,ps->f,ps->u,solver);
-
-
-    lis_solver_get_iter(solver, &iter);
-
-    printf("Solver has converged in %d iterations\n", iter);
-
-    lis_solver_destroy(solver);
+    printf("Solver has converged in %d iterations\n", n_iter);
 
     // Calculate error
 

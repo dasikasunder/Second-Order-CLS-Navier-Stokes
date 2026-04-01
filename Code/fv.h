@@ -23,9 +23,10 @@ typedef struct {
     triangulation* mesh;     // Mesh object associated with the solver
     double* phi;             // Solution of the Poisson equation at cell centers of the mesh
     clsq_data* clsq;         // Constrained least-squares data structure on each face
-    LIS_MATRIX A;             // System matrix
-    LIS_VECTOR f;             // Forcing vector
-    LIS_VECTOR u;             // Solution vector
+    LIS_MATRIX A;            // System matrix
+    LIS_VECTOR f;            // Forcing vector
+    LIS_VECTOR u;            // RHS vector
+    LIS_SOLVER solver;       // Iterative solver
 } poisson_solver;
 
 
