@@ -62,8 +62,13 @@ void poisson_solver_construct_clsq_data(poisson_solver* ps) {
 
     // 2) Loop over boundary faces and construct clsq data for boundary faces
 
-    for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface)
-        clsq_construct_dirichlet_boundary_face_data(iface, ps->mesh, &ps->clsq[iface]);
+    for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface) {
+
+        if (ps->mesh->face[iface].btag == 230)
+            clsq_construct_dirichlet_boundary_face_data(iface, ps->mesh, &ps->clsq[iface]);
+        else
+            clsq_construct_neumann_boundary_face_data(iface, ps->mesh, &ps->clsq[iface]);
+    }
 }
 
 /* Assemble the LHS matrix for solving the poisson equation */
@@ -110,7 +115,14 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
 
         xf = ps->mesh->face[iface].x[0]; yf = ps->mesh->face[iface].x[1];
 
-        assemble_gradient_term_dirichlet_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
+        if (ps->mesh->face[iface].btag == 230) {
+            assemble_gradient_term_dirichlet_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
+            phi_b = poisson_solver_exact_solution(xf, yf);
+        }
+        else {
+            assemble_gradient_term_neumann_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
+            phi_b = 0.0;
+        }
 
         iowner = ps->mesh->face[iface].c[0];
 
@@ -119,8 +131,6 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
         lis_matrix_set_value(LIS_ADD_VALUE, iowner, iowner,    coeffs[0], ps->A);
 
         // Add contribition of boundary condition to RHS
-
-        phi_b = poisson_solver_exact_solution(xf, yf);
 
         lis_vector_set_value(LIS_ADD_VALUE, iowner, coeffs[1]*phi_b, ps->f);
 

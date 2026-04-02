@@ -12,9 +12,11 @@
 
 void clsq_construct_interior_face_data(int, const triangulation*, clsq_data*);
 void clsq_construct_dirichlet_boundary_face_data(int, const triangulation*, clsq_data*);
+void clsq_construct_neumann_boundary_face_data(int, const triangulation*, clsq_data*);
 
 void assemble_gradient_term_interior_face(int, const triangulation*, const clsq_data*, double*);
 void assemble_gradient_term_dirichlet_boundary_face(int, const triangulation*, const clsq_data*, double*);
+void assemble_gradient_term_neumann_boundary_face(int, const triangulation*, const clsq_data*, double*);
 
 /* Poisson equation solver. Solve the Poisson equation in the form -\nabla^2 u = f(x,y) */
 
