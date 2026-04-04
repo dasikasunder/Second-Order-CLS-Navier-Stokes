@@ -9,13 +9,17 @@
 
 poisson_solver* poisson_solver_allocate(const char* mesh_file) {
 
-    int iface;
+    int iface, btag, count;
+    double xf, yf;
 
     poisson_solver* ps = (poisson_solver*)malloc(sizeof(poisson_solver));
     ps->mesh = triangulation_allocate(mesh_file);
 
     allocate_1d(ps->phi, ps->mesh->n_cell);
     allocate_1d(ps->clsq, ps->mesh->n_face);
+    allocate_1d(ps->phi_bnd, ps->mesh->n_bnd_face);
+    allocate_1d(ps->bcond, ps->mesh->n_bnd_face);
+    allocate_1d(ps->bmap, ps->mesh->n_face);
 
     for (iface = 0; iface < ps->mesh->n_face; ++iface)
         allocate_2d(ps->clsq[iface].sol, ps->mesh->face[iface].nvnb+2, ndof);
@@ -28,6 +32,21 @@ poisson_solver* poisson_solver_allocate(const char* mesh_file) {
 
     lis_solver_set_option("-i cg -p ilu", ps->solver);
     lis_solver_set_option("-tol 1.0e-10 -maxiter 1000", ps->solver);
+
+    // Set boundary conditions and values
+
+    count = 0;
+
+    for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface) {
+
+        xf    = ps->mesh->face[iface].x[0];
+        yf    = ps->mesh->face[iface].x[1];
+        btag  = ps->mesh->face[iface].btag;
+
+        poisson_solver_boundary_conditions(xf, yf, btag,  &ps->bcond[count], &ps->phi_bnd[count]);
+        ps->bmap[iface] = count;
+        count++;
+    }
 
     return ps;
 }
@@ -64,7 +83,7 @@ void poisson_solver_construct_clsq_data(poisson_solver* ps) {
 
     for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface) {
 
-        if (ps->mesh->face[iface].btag == 230)
+        if (ps->bcond[ps->bmap[iface]] == dirichlet)
             clsq_construct_dirichlet_boundary_face_data(iface, ps->mesh, &ps->clsq[iface]);
         else
             clsq_construct_neumann_boundary_face_data(iface, ps->mesh, &ps->clsq[iface]);
@@ -76,7 +95,7 @@ void poisson_solver_construct_clsq_data(poisson_solver* ps) {
 void poisson_solver_assemble_system(poisson_solver* ps) {
 
     int iface, iowner, ineighbor, icell, icell_local;
-    double xf, yf, phi_b;
+    double phi_b;
     double coeffs[25];
 
     // Loop over all interior faces
@@ -109,35 +128,30 @@ void poisson_solver_assemble_system(poisson_solver* ps) {
         }
     }
 
-    // Loop over all boundary cells
+    // Loop over all boundary faces
 
     for (iface = ps->mesh->n_int_face; iface < ps->mesh->n_face; ++iface) {
 
-        xf = ps->mesh->face[iface].x[0]; yf = ps->mesh->face[iface].x[1];
-
-        if (ps->mesh->face[iface].btag == 230) {
-            assemble_gradient_term_dirichlet_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
-            phi_b = poisson_solver_exact_solution(xf, yf);
-        }
-        else {
-            assemble_gradient_term_neumann_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
-            phi_b = 0.0;
-        }
-
         iowner = ps->mesh->face[iface].c[0];
 
-        // Add contribution to owner cell
+        if (ps->bcond[ps->bmap[iface]] == dirichlet) {
 
-        lis_matrix_set_value(LIS_ADD_VALUE, iowner, iowner,    coeffs[0], ps->A);
+            assemble_gradient_term_dirichlet_boundary_face(iface, ps->mesh, &ps->clsq[iface], coeffs);
 
-        // Add contribition of boundary condition to RHS
+            lis_matrix_set_value(LIS_ADD_VALUE, iowner, iowner, coeffs[0], ps->A);
 
-        lis_vector_set_value(LIS_ADD_VALUE, iowner, coeffs[1]*phi_b, ps->f);
+            for (icell_local = 0; icell_local < ps->mesh->face[iface].nvnb; ++icell_local) {
+                icell = ps->mesh->face[iface].vnb[icell_local];
+                lis_matrix_set_value(LIS_ADD_VALUE, iowner,    icell,  coeffs[icell_local+2], ps->A);
+            }
 
-        for (icell_local = 0; icell_local < ps->mesh->face[iface].nvnb; ++icell_local) {
+            phi_b = ps->phi_bnd[ps->bmap[iface]];
+            lis_vector_set_value(LIS_ADD_VALUE, iowner, coeffs[1]*phi_b, ps->f);
+        }
 
-            icell = ps->mesh->face[iface].vnb[icell_local];
-            lis_matrix_set_value(LIS_ADD_VALUE, iowner,    icell,  coeffs[icell_local+2], ps->A);
+        else {
+            phi_b = ps->phi_bnd[ps->bmap[iface]];
+            lis_vector_set_value(LIS_ADD_VALUE, iowner, ps->mesh->face[iface].area*phi_b, ps->f);
         }
     }
 

@@ -352,7 +352,6 @@ void assemble_gradient_term_interior_face(int iface, const triangulation* mesh,
         coeffs[icell_local+2] = -area*(clsq->sol[icell_local+2][1]*nx + clsq->sol[icell_local+2][2]*ny);
 
     }
-
 }
 
 //---------------------------------------------------------------------
@@ -371,26 +370,6 @@ void assemble_gradient_term_dirichlet_boundary_face(int iface, const triangulati
     coeffs[0] = -area*(clsq->sol[0][1]*nx + clsq->sol[0][2]*ny); // Contribution to c0 cell
     coeffs[1] =  area*(clsq->sol[1][1]*nx + clsq->sol[1][2]*ny); // Contribution of boundary condition - No minus sign here, so that
                                                                  // contribution is added to the RHS
-
-    for (icell_local = 0; icell_local < mesh->face[iface].nvnb; ++icell_local) // Contribution of vertex neighbouring cells
-        coeffs[icell_local+2] = -area*(clsq->sol[icell_local+2][1]*nx + clsq->sol[icell_local+2][2]*ny);
-}
-
-//---------------------------------------------------------------------
-// Assemble gradient term for a face on dirichlet boundary
-//---------------------------------------------------------------------
-
-void assemble_gradient_term_neumann_boundary_face(int iface, const triangulation* mesh,
-                                                    const clsq_data* clsq, double* coeffs) {
-
-    int icell_local;
-
-    double nx   = mesh->face[iface].n[0];
-    double ny   = mesh->face[iface].n[1];
-    double area = mesh->face[iface].area;
-
-    coeffs[0] = -area*(clsq->sol[0][1]*nx + clsq->sol[0][2]*ny); // Contribution to c0 cell
-    coeffs[1] =  area*(clsq->sol[1][1]*nx + clsq->sol[1][2]*ny); //
 
     for (icell_local = 0; icell_local < mesh->face[iface].nvnb; ++icell_local) // Contribution of vertex neighbouring cells
         coeffs[icell_local+2] = -area*(clsq->sol[icell_local+2][1]*nx + clsq->sol[icell_local+2][2]*ny);
