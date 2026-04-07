@@ -1,7 +1,7 @@
 xmin = 0.0;
 ymin = 0.0;
 L = 1.;
-np = 32.;
+np = 64.;
 
 Point(1) = {xmin, ymin, 0.0, L/np};
 Point(2) = {xmin+L, ymin, 0.0, L/np};
@@ -17,8 +17,8 @@ Line Loop(1) = {1,2,3,4};
 
 Plane Surface(1) = {1};
 
-//Recombine Surface {1};
-//Transfinite Surface {1};
+Recombine Surface {1};
+Transfinite Surface {1};
 
 Physical Curve("230") = {1,2,4}; // Left, right and bottom walls
 Physical Curve("231") = {3};     // Top wall

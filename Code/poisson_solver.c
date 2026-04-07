@@ -70,7 +70,7 @@ void poisson_solver_free(poisson_solver* ps) {
 
 /* Construct constrained least-squares data for each face in the mesh */
 
-void poisson_solver_construct_clsq_data(poisson_solver* ps) {
+void poisson_solver_construct_recon_data(poisson_solver* ps) {
 
     int iface;
 
@@ -195,7 +195,7 @@ void poisson_solver_run(poisson_solver* ps) {
     int icell, n_iter;
     double xc, yc, vol;
 
-    poisson_solver_construct_clsq_data(ps); // Calculate CLSQ data for all the faces
+    poisson_solver_construct_recon_data(ps); // Calculate CLSQ data for all the faces
 
     poisson_solver_assemble_system(ps);     // Assemble the Poisson system
 
@@ -237,4 +237,30 @@ void poisson_solver_run(poisson_solver* ps) {
     }
 
     printf("Max Error = %.3e\n", max_error);
+}
+
+double poisson_solver_exact_solution(double x, double y) {
+    return sin(M_PI*x)*sin(M_PI*y);
+}
+
+double poisson_solver_rhs(double x, double y) {
+    return 2.0*M_PI*M_PI*sin(M_PI*x)*sin(M_PI*y);
+}
+
+void poisson_solver_boundary_conditions(double x, double y, int btag, enum poisson_solver_bcond* bcond, double* value) {
+    if (btag == 230) {
+        *bcond = dirichlet;
+        *value = sin(M_PI*x)*sin(M_PI*y);
+    }
+
+    else if (btag == 231) {
+        *bcond = neumann;
+        *value = M_PI*sin(M_PI*x)*cos(M_PI*y);
+    }
+
+    else {
+        printf("Error. Boundary condition for tag %d is not defined\n.", btag);
+        exit(EXIT_FAILURE);
+    }
+
 }

@@ -46,13 +46,6 @@ typedef struct {
     bool at_boundary; // Whether the face is at boundary
 } Face;
 
-/* Constrained least-squares data type */
-
-typedef struct {
-    double **sol; //
-} clsq_data;
-
-
 /* Triangulation object */
 
 typedef struct  {
@@ -76,15 +69,5 @@ triangulation* triangulation_allocate(const char*);
 void triangulation_plot_vtk(const triangulation*, const char*);
 void triangulation_verify(const triangulation*);
 void triangulation_free(triangulation*);
-
-/* Cell-centered least squares data type */
-
-typedef struct {
-	double *ai;
-    double **ak;
-} cclsq_data;
-
-void cclsq_data_initialize(cclsq_data*, const triangulation*);
-void cclsq_data_free(cclsq_data*, int);
 
 #endif /* TRIANGULATION_H_ */

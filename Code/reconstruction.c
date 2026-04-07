@@ -10,7 +10,7 @@
 // interior face of the mesh.
 //---------------------------------------------------------------------
 
-void clsq_construct_interior_face_data(int iface, const triangulation* mesh, clsq_data* clsq) {
+void clsq_construct_interior_face_data(int iface, const triangulation* mesh, recon_data* clsq) {
 
     int icell, idof, icell_local, c0, c1, signum;
     double x0, y0, dx1, dy1, dx2, dy2, dxi, dyi, dxi_sq, dyi_sq, dxi_dyi, dx, dy;
@@ -121,7 +121,7 @@ void clsq_construct_interior_face_data(int iface, const triangulation* mesh, cls
 // boundary
 //---------------------------------------------------------------------
 
-void clsq_construct_dirichlet_boundary_face_data(int iface, const triangulation* mesh, clsq_data* clsq) {
+void clsq_construct_dirichlet_boundary_face_data(int iface, const triangulation* mesh, recon_data* clsq) {
 
     int icell, idof, icell_local, c0, signum;
     double x0, y0, dx1, dy1, dxi, dyi, dxi_sq, dyi_sq, dxi_dyi, dx, dy;
@@ -223,11 +223,11 @@ void clsq_construct_dirichlet_boundary_face_data(int iface, const triangulation*
 }
 
 //---------------------------------------------------------------------
-// Constructs constrained least squares data for a face on neumann
+// Construct constrained least squares data for a face on neumann
 // boundary
 //---------------------------------------------------------------------
 
-void clsq_construct_neumann_boundary_face_data(int iface, const triangulation* mesh, clsq_data* clsq) {
+void clsq_construct_neumann_boundary_face_data(int iface, const triangulation* mesh, recon_data* clsq) {
 
     int icell, idof, icell_local, c0, signum;
     double x0, y0, dx1, dy1, dxi, dyi, dxi_sq, dyi_sq, dxi_dyi, dx, dy;
@@ -333,11 +333,79 @@ void clsq_construct_neumann_boundary_face_data(int iface, const triangulation* m
 }
 
 //---------------------------------------------------------------------
+// Evaluate Constrained least squares data for a face on interior of
+// the mesh
+//---------------------------------------------------------------------
+
+void evaluate_interior_face(int iface, const triangulation* mesh, const recon_data *clsq, const double *phi, double* value) {
+
+    int icell, icell_local, idof, iowner, ineighbor;
+    double phi_local;
+
+    iowner    = mesh->face[iface].c[0];
+    ineighbor = mesh->face[iface].c[1];
+
+    phi_local = phi[iowner];
+
+    for (idof = 0; idof < ndof; ++idof)
+        value[idof] = phi_local*clsq->sol[0][idof];
+
+    phi_local = phi[ineighbor];
+
+    for (idof = 0; idof < ndof; ++idof)
+        value[idof] += phi_local*clsq->sol[1][idof];
+
+    for (icell_local = 0; icell_local < mesh->face[iface].nvnb; ++icell_local) {
+
+        icell = mesh->face[iface].vnb[icell_local];
+
+        phi_local = phi[icell];
+
+        for (idof = 0; idof < ndof; ++idof)
+            value[idof] += phi_local*clsq->sol[icell_local+2][idof];
+    }
+}
+
+//---------------------------------------------------------------------
+// Evaluate Constrained least squares data for a face on a boundary
+// (Works for both dirichlet and Neumann boundary)
+//---------------------------------------------------------------------
+
+
+void evaluate_boundary_face(int iface, const triangulation* mesh, const recon_data *clsq, const double *phi, double phi_b, double* value) {
+
+    int icell, icell_local, idof, iowner;
+    double phi_local;
+
+    iowner    = mesh->face[iface].c[0];
+
+    phi_local = phi[iowner];
+
+    for (idof = 0; idof < ndof; ++idof)
+        value[idof] = phi_local*clsq->sol[0][idof];
+
+    phi_local = phi_b;
+
+    for (idof = 0; idof < ndof; ++idof)
+        value[idof] += phi_local*clsq->sol[1][idof];
+
+    for (icell_local = 0; icell_local < mesh->face[iface].nvnb; ++icell_local) {
+
+        icell = mesh->face[iface].vnb[icell_local];
+
+        phi_local = phi[icell];
+
+        for (idof = 0; idof < ndof; ++idof)
+            value[idof] += phi_local*clsq->sol[icell_local+2][idof];
+    }
+}
+
+//---------------------------------------------------------------------
 // Assemble gradient term for an intrior face
 //---------------------------------------------------------------------
 
 void assemble_gradient_term_interior_face(int iface, const triangulation* mesh,
-                                          const clsq_data* clsq, double* coeffs) {
+                                          const recon_data* clsq, double* coeffs) {
 
     int icell_local;
 
@@ -359,7 +427,7 @@ void assemble_gradient_term_interior_face(int iface, const triangulation* mesh,
 //---------------------------------------------------------------------
 
 void assemble_gradient_term_dirichlet_boundary_face(int iface, const triangulation* mesh,
-                                          const clsq_data* clsq, double* coeffs) {
+                                          const recon_data* clsq, double* coeffs) {
 
     int icell_local;
 
