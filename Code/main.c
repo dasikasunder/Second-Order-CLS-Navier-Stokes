@@ -10,7 +10,7 @@ void ins_solver_initial_condition(double x, double y, double *u, double *v) {
     *u = 0.; *v = 0.;
 }
 
-
+/*
 void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solver_bcond* bc,
                                     double* u, double* v, double* p) {
 
@@ -30,12 +30,39 @@ void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solve
             exit(EXIT_FAILURE);
     }
 }
+*/
+
+void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solver_bcond* bc,
+                                    double* u, double* v, double* p) {
+
+    (void) x; (void) y;
+
+    switch (btag) {
+        case 23:
+            *bc = wall;
+            *u = 0.0; *v = 0.0; *p = 0.0;
+            break;
+        case 9:
+            *bc = inlet;
+            *u = 24.*y*(0.5-y); *v = 0.0; *p = 0.0;
+            *u = 4.0*0.3*y*(0.41-y)/(0.41*0.41);
+            break;
+        case 15:
+            *bc = outlet;
+            *u = 0.0; *v = 0.0; *p = 0.0;
+            break;
+        default:
+            printf("Error. Boundary condition %d not present\n", btag);
+            exit(EXIT_FAILURE);
+    }
+}
+
 
 int main() {
 
 
     const char mesh_file[] = "mesh.su2"; // Name of the mesh file
-    double nu = 1./50.;                 // Kinematic viscosity of the fluid
+    double nu = 1.0e-2;                 // Kinematic viscosity of the fluid
     double tend = 20.0;                  // Final time
 
     ins_solver* ins = ins_solver_allocate(mesh_file,nu,tend);

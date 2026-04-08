@@ -293,10 +293,9 @@ void ins_solver_calc_auxiliary_velocity(ins_solver* ins) {
     int icell, iface, c0, c1, bcount;
     double dudx, dudy, dvdx, dvdy, flux, ul, ur, vl, vr;
     double dx, dy, xf, yf, nx, ny, area, vol, trm, value[ndof];
+    double fv[2];
 
-    // 1) Make the value of RHS zero in each cell
-
-    //memset(ins->rhsu, 0.0, sizeof(ins->rhsu)); memset(ins->rhsv, 0.0, sizeof(ins->rhsv));
+    // 0) Reset a number of values to zero
 
     for (icell = 0; icell < ins->mesh->n_cell; ++icell) {
         ins->rhsu[icell] = 0.0; ins->rhsv[icell] = 0.0;
@@ -319,16 +318,16 @@ void ins_solver_calc_auxiliary_velocity(ins_solver* ins) {
         evaluate_interior_face(iface, ins->mesh, &ins->clsq[iface], ins->u, value);
         ins->uf[iface] = value[0]; dudx = value[1]; dudy = value[2];
 
-        flux = -ins->nu*(dudx*nx + dudy*ny)*area;
+        fv[0] = -ins->nu*(dudx*nx + dudy*ny)*area;
 
-        ins->rhsu[c0] += flux; ins->rhsu[c1] -= flux;
+        ins->rhsu[c0] += fv[0]; ins->rhsu[c1] -= fv[0];
 
         evaluate_interior_face(iface, ins->mesh, &ins->clsq[iface], ins->v, value);
         ins->vf[iface] = value[0]; dvdx = value[1]; dvdy = value[2];
 
-        flux = -ins->nu*(dvdx*nx + dvdy*ny)*area;
+        fv[1] = -ins->nu*(dvdx*nx + dvdy*ny)*area;
 
-        ins->rhsv[c0] += flux; ins->rhsv[c1] -= flux;
+        ins->rhsv[c0] += fv[1]; ins->rhsv[c1] -= fv[1];
     }
 
     // 1b) -> Boundary faces
@@ -341,24 +340,30 @@ void ins_solver_calc_auxiliary_velocity(ins_solver* ins) {
         c0   = ins->mesh->face[iface].c[0];
         nx   = ins->mesh->face[iface].n[0]; ny   = ins->mesh->face[iface].n[1];
 
+
         evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->u, ins->ubnd[bcount], value);
         ins->uf[iface] = value[0]; dudx = value[1]; dudy = value[2];
-
-        flux = -ins->nu*(dudx*nx + dudy*ny)*area;
-        ins->rhsu[c0] += flux;
 
         evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->v, ins->vbnd[bcount], value);
         ins->vf[iface] = value[0]; dvdx = value[1]; dvdy = value[2];
 
-        flux = -ins->nu*(dvdx*nx + dvdy*ny)*area;
-        ins->rhsv[c0] += flux;
+
+        if (ins->bcond[bcount] == wall)
+            ins_solver_wall_viscous_flux(ins, iface, dudx, dudy, dvdx, dvdy, fv);
+        else {
+            fv[0] = -ins->nu*(dudx*nx + dudy*ny)*area;
+            fv[1] = -ins->nu*(dvdx*nx + dvdy*ny)*area;
+        }
+
+        ins->rhsu[c0] += fv[0];
+        ins->rhsv[c0] += fv[1];
 
         bcount++;
     }
 
     // 2) Calculate convective fluxes
 
-    // 2a) Calculate velocity gradients at cell centers using Green-Gauss theorem
+    // 2a) First calculate velocity gradients at cell centers using Green-Gauss theorem
 
     for (iface = 0; iface < ins->mesh->n_face; ++iface) {
 
@@ -419,6 +424,33 @@ void ins_solver_calc_auxiliary_velocity(ins_solver* ins) {
         }
     }
 
+    // 2c) Calculate convective flux through boundary faces
+
+    bcount = 0;
+
+    for (iface = ins->mesh->n_int_face; iface < ins->mesh->n_face; ++iface) {
+
+        xf = ins->mesh->face[iface].x[0]; yf = ins->mesh->face[iface].x[1];
+        c0   = ins->mesh->face[iface].c[0];
+
+        if (ins->bcond[bcount] == wall || ins->bcond[bcount] == inlet) {
+            ul = ins->ubnd[bcount]; vl = ins->vbnd[bcount];
+        }
+
+        else {
+
+            dx = xf - ins->mesh->cell[c0].x[0]; dy = yf - ins->mesh->cell[c0].x[1];
+
+            ul = ins->u[c0] + dx*ins->du[c0][0] + dy*ins->du[c0][1];
+            vl = ins->v[c0] + dx*ins->dv[c0][0] + dy*ins->dv[c0][1];
+        }
+
+        flux = ins->mdotf[iface]*ul; ins->rhsu[c0] += flux;
+        flux = ins->mdotf[iface]*vl; ins->rhsv[c0] += flux;
+
+        bcount++;
+    }
+
     // 3) Update cell center velocity
 
     for (icell = 0; icell < ins->mesh->n_cell; ++icell) {
@@ -429,13 +461,31 @@ void ins_solver_calc_auxiliary_velocity(ins_solver* ins) {
 }
 
 //---------------------------------------------------------------------
+// Viscous flux at a wall
+//---------------------------------------------------------------------
+
+void ins_solver_wall_viscous_flux(const ins_solver* ins, int iface, double dudx, double dudy, double dvdx, double dvdy, double* flux) {
+
+    double nu = ins->nu;
+    double area = ins->mesh->face[iface].area;
+    double nx = ins->mesh->face[iface].n[0]; double ny = ins->mesh->face[iface].n[1];
+
+    double tauxx = 2.0*nu*dudx;
+    double tauxy = nu*(dudy + dvdx);
+    double tauyy = 2.0*nu*dvdy;
+
+    flux[0] = -area*(tauxx*nx + tauxy*ny);
+    flux[1] = -area*(tauxy*nx + tauyy*ny);
+}
+
+//---------------------------------------------------------------------
 // Calculate divergence of velocity in each cell using Gauss-Divergence
 // theorem
 //---------------------------------------------------------------------
 
 void ins_solver_calc_div_vel(ins_solver* ins) {
 
-    int iface, c0, c1;
+    int iface, c0, c1, bcount;
     double mdotf, area, u, v,  nx, ny;
     double value[3];
 
@@ -454,6 +504,35 @@ void ins_solver_calc_div_vel(ins_solver* ins) {
 
         ins->divU[c0] += mdotf/ins->mesh->cell[c0].vol;
         ins->divU[c1] -= mdotf/ins->mesh->cell[c1].vol;
+    }
+
+    bcount = 0;
+
+    for (iface = ins->mesh->n_int_face; iface < ins->mesh->n_face; ++iface) {
+
+        area = ins->mesh->face[iface].area;
+        nx   = ins->mesh->face[iface].n[0]; ny   = ins->mesh->face[iface].n[1];
+        c0   = ins->mesh->face[iface].c[0];
+
+        if (ins->bcond[bcount] == wall)
+            mdotf = 0.0;
+
+        else if (ins->bcond[bcount] == inlet)
+            mdotf = (ins->ubnd[bcount]*nx + ins->vbnd[bcount]*ny)*area;
+
+        else {
+
+            evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->u, ins->ubnd[bcount], value); u = value[0];
+            evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->v, ins->vbnd[bcount], value); v = value[0];
+
+            ins->uf[iface] = u; ins->vf[iface] = v;
+
+            mdotf = (u*nx + v*ny)*area;
+        }
+
+        ins->divU[c0] += mdotf/ins->mesh->cell[c0].vol;
+
+        bcount++;
     }
 }
 
@@ -524,9 +603,26 @@ void ins_solver_correct_velocity(ins_solver* ins) {
         area = ins->mesh->face[iface].area;
         nx   = ins->mesh->face[iface].n[0]; ny   = ins->mesh->face[iface].n[1];
 
-        evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_prs[bcount], ins->p, 0.0, value);
+        evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_prs[bcount], ins->p, ins->pbnd[bcount], value);
 
         ins->pf[iface] = value[0];
+
+        if (ins->bcond[bcount] == wall) {
+            ins->mdotf[iface] = 0.0;
+        }
+
+        else if (ins->bcond[bcount] == inlet) {
+            ins->mdotf[iface] = (ins->ubnd[bcount]*nx + ins->vbnd[bcount]*ny)*area;
+        }
+
+        else {
+
+            dpdn = value[1]*nx + value[2]*ny;
+
+            un = ins->uf[iface]*nx + ins->vf[iface]*ny;
+
+            ins->mdotf[iface] = (un - ins->dt*dpdn)*area;
+        }
 
         bcount++;
     }
@@ -554,9 +650,11 @@ void ins_solver_correct_velocity(ins_solver* ins) {
         }
 
         div_vel /= vol;
+
         dp[0] /= vol; dp[1] /= vol;
 
         ins->u[icell] -= ins->dt*dp[0]; ins->v[icell] -= ins->dt*dp[1];
+        ins->divU[icell] = div_vel;
 
         if (fabs(div_vel) > ins->max_div_vel)
             ins->max_div_vel = fabs(div_vel);
@@ -593,7 +691,14 @@ void ins_solver_plot_vtk(ins_solver* ins) {
     for (icell = 0; icell < ins->mesh->n_cell; ++icell)
         fprintf(file_ptr, "%.5e\n", ins->p[icell]);
 
-    // Plot velocity
+    fprintf(file_ptr, "SCALARS divU double 1\n");
+    fprintf(file_ptr, "LOOKUP_TABLE default\n");
+
+    for (icell = 0; icell < ins->mesh->n_cell; ++icell)
+        fprintf(file_ptr, "%.5e\n", ins->divU[icell]);
+
+
+    // velocity
 
     fprintf(file_ptr, "VECTORS Velocity double\n");
 
@@ -622,7 +727,6 @@ void ins_solver_calc_residue(ins_solver* ins) {
     }
 
     ins->residual = sqrt(ins->residual)/(ins->dt*(double)ins->mesh->n_cell);
-
 }
 
 //---------------------------------------------------------------------
@@ -635,6 +739,7 @@ void ins_solver_run(ins_solver* ins) {
     ins_solver_assemble_ppe_matrix(ins);         // Assemble matrix for solving pressure poisson equation
 
      ins_solver_plot_vtk(ins);
+
 
     while (ins->time < ins->tend) {
 
@@ -661,9 +766,8 @@ void ins_solver_run(ins_solver* ins) {
             if (ins->residual < 1.0e-6) break;
         }
 
-        if (ins->timestep%500 == 0 || ins->timestep == 10800)
+        if (ins->timestep%100 == 0)
             ins_solver_plot_vtk(ins);
-
     }
 
     ins_solver_plot_vtk(ins);

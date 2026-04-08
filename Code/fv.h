@@ -94,6 +94,7 @@ void ins_solver_compute_reconstruction_data(ins_solver*);
 void ins_solver_calc_time_step(ins_solver*);
 void ins_solver_calc_auxiliary_velocity(ins_solver*);
 void ins_solver_calc_div_vel(ins_solver*);
+void ins_solver_wall_viscous_flux(const ins_solver*, int, double, double, double, double, double*);
 void ins_solver_assemble_ppe_matrix(ins_solver*);
 void ins_solver_solve_ppe(ins_solver*);
 void ins_solver_correct_velocity(ins_solver*);
@@ -101,5 +102,6 @@ void ins_solver_plot_vtk(ins_solver*);
 void ins_solver_calc_residue(ins_solver*);
 void ins_solver_run(ins_solver*);
 void ins_solver_free(ins_solver*);
+
 
 #endif /* FV_H_ */
