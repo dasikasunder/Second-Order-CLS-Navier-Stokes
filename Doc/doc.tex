@@ -1,21 +1,146 @@
-\documentclass{elsarticle}
-\usepackage{amsmath}
+%\documentclass[final,3p,sort&compress,times,review]{elsarticle}
+\documentclass[final,3p,review]{elsarticle}
+%\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{framed,multirow}
+\usepackage{latexsym}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{url}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{rotating,multirow,setspace,colordvi}
 \usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{lineno}
+\linenumbers
+\usetikzlibrary{spy}
+\usepgfplotslibrary{groupplots}
+\usepackage{capt-of}
+\usepgfplotslibrary{colormaps}
 
 \title{A second order unstructured finite volume method for incompressible Navier-Stokes equations using face based constrained least-squares procedure}
 \author{Dasika Sunder}
 \date{}
 
+\pgfplotsset{colormap={rainbow}{[1pt]
+		rgb(0pt)=(0.5, 0.0, 1.0);
+		rgb(1pt)=(0.4843137254901961, 0.02463744919538197, 0.9999241101148306);
+		rgb(2pt)=(0.4607843137254902, 0.061560906133942835, 0.9995257197133659);
+		rgb(3pt)=(0.44509803921568625, 0.08613293949614599, 0.9990704811844932);
+		rgb(4pt)=(0.4215686274509804, 0.12288829066471411, 0.9981033287370441);
+		rgb(5pt)=(0.40588235294117647, 0.1473016980546375, 0.997269173385788);
+		rgb(6pt)=(0.38235294117647056, 0.18374951781657034, 0.9957341762950345);
+		rgb(7pt)=(0.3666666666666667, 0.20791169081775931, 0.9945218953682733);
+		rgb(8pt)=(0.3431372549019608, 0.24391372010837714, 0.9924205096719357);
+		rgb(9pt)=(0.3196078431372549, 0.2795825925967438, 0.989980213280707);
+		rgb(10pt)=(0.303921568627451, 0.30315267411304353, 0.9881654720812594);
+		rgb(11pt)=(0.2803921568627451, 0.33815827481581706, 0.9851622334675065);
+		rgb(12pt)=(0.2647058823529412, 0.3612416661871529, 0.9829730996839018);
+		rgb(13pt)=(0.24117647058823533, 0.3954512068705425, 0.9794097676013659);
+		rgb(14pt)=(0.22549019607843135, 0.41796034488678346, 0.9768483177596007);
+		rgb(15pt)=(0.2019607843137255, 0.45124405704532283, 0.9727282722446048);
+		rgb(16pt)=(0.18627450980392157, 0.47309355683601007, 0.9697969360350095);
+		rgb(17pt)=(0.16274509803921566, 0.5053251839489481, 0.965124085200289);
+		rgb(18pt)=(0.1392156862745098, 0.53686659764418, 0.9601216453746282);
+		rgb(19pt)=(0.12352941176470589, 0.5574894393428855, 0.9566044195004408);
+		rgb(20pt)=(0.09999999999999998, 0.5877852522924731, 0.9510565162951535);
+		rgb(21pt)=(0.08431372549019611, 0.6075389463388168, 0.9471773565640402);
+		rgb(22pt)=(0.0607843137254902, 0.6364742361471414, 0.9410892525013717);
+		rgb(23pt)=(0.04509803921568628, 0.6552838500134536, 0.9368518385313106);
+		rgb(24pt)=(0.021568627450980427, 0.6827488552151855, 0.9302293085467404);
+		rgb(25pt)=(0.0019607843137254832, 0.7092813076058534, 0.9232891061054893);
+		rgb(26pt)=(0.01764705882352935, 0.7264335740162241, 0.918486985745923);
+		rgb(27pt)=(0.04117647058823526, 0.7513318895568732, 0.9110226492460883);
+		rgb(28pt)=(0.056862745098039236, 0.7673626814486969, 0.9058734224033671);
+		rgb(29pt)=(0.08039215686274503, 0.7905324123001632, 0.8978920322202582);
+		rgb(30pt)=(0.09607843137254901, 0.8053809193888326, 0.8924005832479478);
+		rgb(31pt)=(0.11960784313725492, 0.8267341748257635, 0.883909710213612);
+		rgb(32pt)=(0.1352941176470588, 0.8403440716378927, 0.8780812480836979);
+		rgb(33pt)=(0.1588235294117647, 0.8597998514483723, 0.8690889463055284);
+		rgb(34pt)=(0.1823529411764706, 0.8780812480836979, 0.8597998514483725);
+		rgb(35pt)=(0.19803921568627447, 0.8896040127307095, 0.853443798888316);
+		rgb(36pt)=(0.22156862745098038, 0.9058734224033671, 0.8436671478337664);
+		rgb(37pt)=(0.23725490196078436, 0.9160336012803335, 0.8369891083319778);
+		rgb(38pt)=(0.26078431372549016, 0.9302293085467402, 0.8267341748257635);
+		rgb(39pt)=(0.27647058823529413, 0.9389883606150565, 0.8197404829072211);
+		rgb(40pt)=(0.30000000000000004, 0.9510565162951535, 0.8090169943749475);
+		rgb(41pt)=(0.3156862745098039, 0.9583812154701222, 0.8017142839800667);
+		rgb(42pt)=(0.3392156862745098, 0.9682760409157589, 0.7905324123001634);
+		rgb(43pt)=(0.36274509803921573, 0.9768483177596007, 0.7790805745256704);
+		rgb(44pt)=(0.3784313725490196, 0.9818225628535369, 0.7712979623471807);
+		rgb(45pt)=(0.4019607843137255, 0.9881654720812594, 0.7594049166547071);
+		rgb(46pt)=(0.41764705882352937, 0.9916446955107427, 0.7513318895568734);
+		rgb(47pt)=(0.4411764705882353, 0.9957341762950345, 0.7390089172206591);
+		rgb(48pt)=(0.45686274509803915, 0.9977051801738729, 0.7306531329586932);
+		rgb(49pt)=(0.48039215686274506, 0.9995257197133659, 0.717911923064442);
+		rgb(50pt)=(0.503921568627451, 0.9999810273487268, 0.7049255469061472);
+		rgb(51pt)=(0.5196078431372548, 0.9995257197133659, 0.6961339459629267);
+		rgb(52pt)=(0.5431372549019609, 0.9977051801738729, 0.6827488552151855);
+		rgb(53pt)=(0.5588235294117647, 0.9957341762950346, 0.6736956436465572);
+		rgb(54pt)=(0.5823529411764705, 0.9916446955107427, 0.6599245348787227);
+		rgb(55pt)=(0.5980392156862746, 0.9881654720812594, 0.650618300204242);
+		rgb(56pt)=(0.6215686274509804, 0.9818225628535369, 0.6364742361471414);
+		rgb(57pt)=(0.6372549019607843, 0.9768483177596008, 0.6269238058941066);
+		rgb(58pt)=(0.6607843137254901, 0.9682760409157589, 0.6124202030492502);
+		rgb(59pt)=(0.6843137254901961, 0.9583812154701222, 0.5977074592660936);
+		rgb(60pt)=(0.7, 0.9510565162951536, 0.5877852522924731);
+		rgb(61pt)=(0.723529411764706, 0.9389883606150565, 0.5727351400805052);
+		rgb(62pt)=(0.7392156862745098, 0.9302293085467404, 0.5625927516198231);
+		rgb(63pt)=(0.7627450980392156, 0.9160336012803335, 0.5472195469221112);
+		rgb(64pt)=(0.7784313725490195, 0.9058734224033673, 0.5368665976441802);
+		rgb(65pt)=(0.8019607843137255, 0.8896040127307095, 0.5211848828765852);
+		rgb(66pt)=(0.8176470588235294, 0.878081248083698, 0.510631193180907);
+		rgb(67pt)=(0.8411764705882352, 0.8597998514483726, 0.49465584339977897);
+		rgb(68pt)=(0.8647058823529412, 0.8403440716378927, 0.4785115691012865);
+		rgb(69pt)=(0.8803921568627451, 0.8267341748257635, 0.4676575928925868);
+		rgb(70pt)=(0.9039215686274509, 0.8053809193888327, 0.45124405704532283);
+		rgb(71pt)=(0.919607843137255, 0.7905324123001635, 0.4402157408309874);
+		rgb(72pt)=(0.9431372549019608, 0.7673626814486971, 0.4235485126679244);
+		rgb(73pt)=(0.9588235294117646, 0.7513318895568735, 0.41235631747390367);
+		rgb(74pt)=(0.9823529411764707, 0.7264335740162241, 0.3954512068705426);
+		rgb(75pt)=(1.0, 0.7005430375932911, 0.37841105004231035);
+		rgb(76pt)=(1.0, 0.6827488552151856, 0.3669787916496722);
+		rgb(77pt)=(1.0, 0.6552838500134535, 0.3497265112062611);
+		rgb(78pt)=(1.0, 0.6364742361471414, 0.33815827481581706);
+		rgb(79pt)=(1.0, 0.6075389463388169, 0.3207102355902552);
+		rgb(80pt)=(1.0, 0.5877852522924732, 0.30901699437494745);
+		rgb(81pt)=(1.0, 0.5574894393428858, 0.29138974688932473);
+		rgb(82pt)=(1.0, 0.5368665976441802, 0.27958259259674395);
+		rgb(83pt)=(1.0, 0.5053251839489484, 0.2617928573630405);
+		rgb(84pt)=(1.0, 0.4730935568360101, 0.24391372010837717);
+		rgb(85pt)=(1.0, 0.4512440570453229, 0.2319476414538982);
+		rgb(86pt)=(1.0, 0.41796034488678324, 0.21393308320649734);
+		rgb(87pt)=(1.0, 0.3954512068705424, 0.2018824091570102);
+		rgb(88pt)=(1.0, 0.3612416661871533, 0.18374951781657053);
+		rgb(89pt)=(1.0, 0.33815827481581756, 0.17162567916635985);
+		rgb(90pt)=(1.0, 0.30315267411304364, 0.15339165487868545);
+		rgb(91pt)=(1.0, 0.279582592596744, 0.14120615182309149);
+		rgb(92pt)=(1.0, 0.24391372010837745, 0.12288829066471427);
+		rgb(93pt)=(1.0, 0.20791169081775931, 0.10452846326765346);
+		rgb(94pt)=(1.0, 0.18374951781657037, 0.09226835946330202);
+		rgb(95pt)=(1.0, 0.14730169805463766, 0.07385252747487403);
+		rgb(96pt)=(1.0, 0.12288829066471434, 0.061560906133942946);
+		rgb(97pt)=(1.0, 0.08613293949614632, 0.043106538086295734);
+		rgb(98pt)=(1.0, 0.06156090613394323, 0.030795058556170547);
+		rgb(99pt)=(1.0, 0.024637449195382025, 0.012319659535238468);
+		rgb(100pt)=(1.0, 1.2246467991473532e-16, 6.123233995736766e-17);
+}}
+
+
 \begin{document}
 	
 	\begin{frontmatter}
 
-
 	\begin{abstract}
-		This paper discusses the use of face based constrained least-squares procedure for solving incompressible Navier-Stokes equations. Although reconstruction is performed on faces of the mesh, the underlying finite volume method is still cell centered.  This arrangement of reconstruction is particularly advantageous in implementation     
+		In this paper, we discuss the use of face based constrained least-squares reconstruction for a second-order cell-centered finite volume discretization of incompressible flows on unstructured grids. In a cell-centered finite volume method, although variables at cell centers are updated, calculation of fluxes and application of boundary conditions is performed at faces of the mesh. 
 	\end{abstract}
 	
 	\end{frontmatter}
@@ -123,7 +248,122 @@
 		
 	\end{figure}
 	
+	\section{Results}
+	
+	\subsection{Potential flow around a circular cylinder}
+	\noindent Potential flow over a cylinder models inviscid, incompressible, and irrotational fluid flowing around a circular body. Since the velocity field is irrotational, it can be expressed in terms of a potential function $\phi$ \cite{thomas2015thomas}, as  $\mathbf{u} = \nabla \phi$. Further, the divergence free condition on velocity, $\nabla \cdot \mathbf{u}$, leads to a Poisson equation, $\nabla^2 \phi = 0$, for the potential function. For potential flow past cylinder, the exact solution for radial and tangential velocity components $u_r$ and $u_{\theta}$, is given in polar coordinates $(r,\theta)$ by
+	\begin{subequations}
+		\begin{equation}
+		\phi = \left(r + \frac{R^2}{r}\right)U\cos \theta
+		\end{equation}
+		\begin{equation}
+			u_r  = \frac{\partial \phi}{\partial r} =  \left(1 - \frac{R^2}{r^2}\right)U\cos \theta
+		\end{equation}
+		\begin{equation}
+			u_{\theta}  = \frac{1}{r}\frac{\partial \phi}{\partial \theta} =  -\left(1 + \frac{R^2}{r^2}\right)U\sin \theta
+		\end{equation}
+		\label{eq:potential_flow}
+	\end{subequations}
+  	For our test case, we use free stream velocity $U$ = 1. The computational domain is a square $\Omega = [-5,5]^2$ at the center of which  a circular cylinder of radius $R = 1$ is placed. On surface of the cylinder, no flow through condition, $\mathbf{u} \cdot \mathbf{n} = 0$, translates to a homogeneous Neumann condition, $\nabla \phi \cdot \mathbf{n} = 0$, for the potential function. On boundaries of the outer square domain, we impose exact solution provided by Equation \ref{eq:potential_flow}. A schematic diagram for the problem showing the geometry and boundary conditions is shown in Figure \ref{fig:potential-flow-schematic}.
+  	\begin{figure}[h]
+  		\centering
+  		\begin{tikzpicture}
+  			\draw(-2.5,-2.5) -- (2.5,-2.5) -- (2.5,2.5) -- (-2.5,2.5) -- (-2.5,-2.5) -- cycle;
+  			\draw[dash dot] (0,0) circle (0.5);
+  			\draw (-2,2) -- (-1.5,2)  node[right]{Dirichlet};
+  			\draw[dash dot] (-2,1.5) -- (-1.5,1.5)  node[right]{Neumann};
+  		\end{tikzpicture}
+  		\caption{Schematic diagram showing geometry and boundary conditions for potential past a circular cylinder test case.}
+  		\label{fig:potential-flow-schematic}
+  	\end{figure}
+  	
+  	
+  	\noindent Table \ref{tab:potential_flow}  shows convergence rates on a sequence of meshes with characteristic size $h = 2\pi/64$ through $h = 2\pi/1024$. With subsequent refinement, the desired second order convergence rate is achieved in both $L_2$ and $L_{\infty}$ norms. 
+  	\begin{table}[h]
+  		\centering
+  		\begin{tabular}{|c|c|c|c|c|}
+  			\hline
+  			$h$& $L_2$ error & $L_2$ convergence & $L_\infty$ Error & $L_\infty$ convergence \\
+  			\hline
+  			$2\pi/64$& $1.201 \times 10^{-3}$  &  & $5.728 \times 10^{-3}$ &  \\
+  			\hline
+  			$2\pi/128$& $2.920 \times 10^{-4}$  & $2.04$ & $1.783 \times 10^{-3}$ & $1.68$   \\
+  			\hline
+  			$2\pi/256$& $6.989 \times 10^{-5}$ & $2.06$  & $4.808 \times 10^{-4}$ & $1.89$  \\
+  			\hline
+  			$2\pi/512$& $1.697 \times 10^{-5}$  & $2.04$ & $1.235 \times 10^{-4}$  & $1.96$ \\
+  			\hline
+  			$2\pi/1024$& $4.176 \times 10^{-6}$  & $2.02$ & $3.120 \times 10^{-5}$  & $1.98$ \\
+  			\hline
+  		\end{tabular}
+  		\caption {$L_2$ and $L_{\infty}$ errors for potential flow  around a cylinder test, as a function of characteristic mesh size $h$. In the present case, $h$ is calculated by dividing perimeter of the cylinder by number of grid points on it.}
+  		\label{tab:potential_flow}
+  	\end{table} 
+  	
+  	\begin{figure}[h]
+  		\centering
+  		\begin{subfigure}{0.45\textwidth}
+  		\centering
+  		\begin{tikzpicture}
+  			\begin{axis}
+  				[enlargelimits=false,
+  				axis on top,
+  				axis equal image]
+  				\addplot graphics[xmin=-5,xmax=5,ymin=-5,ymax=5]
+  				{Images/potential-flow-mesh.png};
+  			\end{axis}
+  		\end{tikzpicture}
+  		\caption{}
+  		\end{subfigure}
+  		\begin{subfigure}{0.51\textwidth}
+  			\centering
+			\begin{tikzpicture}
+				\begin{axis}
+					[enlargelimits=false,
+					axis on top,
+					axis equal image,
+					colormap name=rainbow,
+					colorbar,
+					colorbar/width=2.5mm,
+					width=1\textwidth]
+					\addplot [point meta min 	= -5.14, point meta max = 5.14] graphics[xmin=-5,xmax=5,ymin=-5,ymax=5]
+					{Images/potential-flow.png};
+				\end{axis}
+			\end{tikzpicture}
+			\caption{}
+		\end{subfigure}
+		
+		\caption{Solution for potential flow past a circular cylinder. (a) grid with characteristic mesh space $h = \frac{2\pi}{128}$} and (b) potential function $\phi$ in the domain.
+		\label{fig:potential_flow}
+  	\end{figure}
 
+    	
+	\subsection{Kovasznay flow solution}
+	\noindent The first test case for incompressible Navier-Stokes equations is the Kovasznay analytical solution for laminar flow \cite{Kovasznay_1948}. This test case provides a non-trivial exact solution for steady-state Navier-Stokes equations, and is given by 
+	\begin{subequations}
+		\begin{equation}
+			u = 1 - e^{\lambda x} \cos (2\pi y)
+		\end{equation}
+		\begin{equation}
+			v = \frac{\lambda}{2\pi} e^{\lambda x} \sin(2\pi y)
+		\end{equation}
+		\begin{equation}
+			p = \frac{1}{2}(1 - e^{2\lambda x})
+		\end{equation}
+		\label{eq:kovasznay_flow}
+	\end{subequations}
+	In the above equations $\lambda = \frac{1}{2\nu} - \sqrt{\frac{1}{4\nu^2} + 4\pi^2}$. 
+	
+	\subsection{Lid Driven Cavity} 
+	
+	\subsection{Unsteady flow around cylinder in a channel}
+	
+	\section{Conclusions}
+
+	
+	
+	\section*{Acknowledgments}
+	The Library of Iterative solvers for Linear Systems (LIS) \cite{LISSolver} is used to solve the system. The least-squares systems are solved using \cite{gsl} 
 	
 	
 	
