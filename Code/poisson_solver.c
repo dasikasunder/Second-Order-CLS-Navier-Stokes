@@ -31,7 +31,7 @@ poisson_solver* poisson_solver_allocate(const char* mesh_file) {
     lis_solver_create(&ps->solver);
 
     lis_solver_set_option("-i cg -p ilu", ps->solver);
-    lis_solver_set_option("-tol 1.0e-10 -maxiter 1000", ps->solver);
+    lis_solver_set_option("-tol 1.0e-10 -maxiter 10000", ps->solver);
 
     // Set boundary conditions and values
 
@@ -221,7 +221,8 @@ void poisson_solver_run(poisson_solver* ps) {
     // Calculate error
 
     double max_error = 0.0;
-    double value;
+    double l2_error = 0.0;
+    double value, error;
 
     for (icell = 0; icell < ps->mesh->n_cell; ++icell) {
 
@@ -230,32 +231,44 @@ void poisson_solver_run(poisson_solver* ps) {
 
         double exact = poisson_solver_exact_solution(xc,yc);
         lis_vector_get_value(ps->u, icell, &value);
-        double error = fabs(exact - value);
+        error = fabs(exact - value);
+
+        l2_error += error*error;
 
         if (error > max_error)
             max_error = error;
     }
 
+    l2_error = sqrt(l2_error/(double)ps->mesh->n_cell);
+
+    printf("L2 Error  = %.3e\n", l2_error);
     printf("Max Error = %.3e\n", max_error);
 }
 
 double poisson_solver_exact_solution(double x, double y) {
-    return sin(M_PI*x)*sin(M_PI*y);
+
+    double R = 1.0;
+    double r = hypot(x,y);
+    double theta = atan2(y,x);
+    double U = 1.0;
+
+    return U*(r+R*R/r)*cos(theta);
 }
 
 double poisson_solver_rhs(double x, double y) {
-    return 2.0*M_PI*M_PI*sin(M_PI*x)*sin(M_PI*y);
+    return 0.0*x+0.0*y;
 }
 
 void poisson_solver_boundary_conditions(double x, double y, int btag, enum poisson_solver_bcond* bcond, double* value) {
-    if (btag == 230) {
+
+    if (btag == 4) {
         *bcond = dirichlet;
-        *value = sin(M_PI*x)*sin(M_PI*y);
+        *value = poisson_solver_exact_solution(x,y);
     }
 
-    else if (btag == 231) {
+    else if (btag == 19) {
         *bcond = neumann;
-        *value = M_PI*sin(M_PI*x)*cos(M_PI*y);
+        *value = 0.0;
     }
 
     else {

@@ -538,6 +538,12 @@ void calc_cell_metrics(triangulation* tria) {
             tria->cell[i].x[0] = (1./4.)*(x1+x2+x3+x4);
             tria->cell[i].x[1] = (1./4.)*(y1+y2+y3+y4);
         }
+
+        if (tria->cell[i].vol < 0.0) {
+            //printf("Error. Negative volume of cell %d, vol = %f\n", i, tria->cell[i].vol);
+            tria->cell[i].vol = fabs(tria->cell[i].vol);
+            //exit(EXIT_FAILURE);
+        }
     }
 }
 
