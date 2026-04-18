@@ -10,7 +10,7 @@ void ins_solver_initial_condition(double x, double y, double *u, double *v) {
     *u = 0.; *v = 0.;
 }
 
-void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solver_bcond* bc,
+void ldc_boundary_conditions(double x, double y, int btag, enum ins_solver_bcond* bc,
                                     double* u, double* v, double* p) {
 
     (void) x; (void) y;
@@ -30,14 +30,18 @@ void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solve
     }
 }
 
-/*
+
 void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solver_bcond* bc,
                                     double* u, double* v, double* p) {
 
     (void) x; (void) y;
 
     switch (btag) {
-        case 23:
+        case 230:
+            *bc = wall;
+            *u = 0.0; *v = 0.0; *p = 0.0;
+            break;
+        case 231:
             *bc = wall;
             *u = 0.0; *v = 0.0; *p = 0.0;
             break;
@@ -55,24 +59,32 @@ void ins_solver_boundary_conditions(double x, double y, int btag, enum ins_solve
             exit(EXIT_FAILURE);
     }
 }
-*/
 
 int main() {
 
 
 
     const char mesh_file[] = "mesh.su2"; // Name of the mesh file
-    //double nu = 1.0e-2;                 // Kinematic viscosity of the fluid
-    //double tend = 20.0;                  // Final time
+    double nu = 0.001;                   // Kinematic viscosity of the fluid
+    double tend = 100.0;                  // Final time
 
-    //ins_solver* ins = ins_solver_allocate(mesh_file,nu,tend);
-    //ins_solver_run(ins);
-    //ins_solver_free(ins);
+    int cylinder_wall = 230;
+    double uref = 0.2;
+    double lref = 0.1;
 
-    poisson_solver* ps = poisson_solver_allocate(mesh_file);
-    poisson_solver_run(ps);
-    poisson_solver_plot_vtk(ps, "sol.vtk");
-    poisson_solver_free(ps);
+    double cl, cd;
+
+
+    ins_solver* ins = ins_solver_allocate(mesh_file,nu,tend);
+    ins_solver_run(ins);
+    ins_solver_calc_force_coeffs(ins,cylinder_wall,uref,lref,&cl,&cd);
+    printf("Cl = %.3e, Cd = %.3e\n", cl, cd);
+    ins_solver_free(ins);
+
+    //poisson_solver* ps = poisson_solver_allocate(mesh_file);
+    //poisson_solver_run(ps);
+    //poisson_solver_plot_vtk(ps, "sol.vtk");
+    //poisson_solver_free(ps);
 
     return 0;
 }

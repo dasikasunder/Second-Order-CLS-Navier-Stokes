@@ -709,7 +709,7 @@ void ins_solver_plot_vtk(ins_solver* ins) {
 }
 
 //---------------------------------------------------------------------
-// Calculate residue for minitoring convergence
+// Calculate residue for monitoring convergence
 //---------------------------------------------------------------------
 
 void ins_solver_calc_residue(ins_solver* ins) {
@@ -730,6 +730,50 @@ void ins_solver_calc_residue(ins_solver* ins) {
 }
 
 //---------------------------------------------------------------------
+// Compute lift and drag coefficients for boundary with tag btag
+//---------------------------------------------------------------------
+
+void ins_solver_calc_force_coeffs(ins_solver* ins, int btag, double uref, double lref,  double* cl, double* cd) {
+
+    int iface, bcount;
+    double dudx, dudy, dvdx, dvdy;
+    double nx, ny, area, value[ndof], p;
+    double fl, fd;
+
+    fl = 0.0; fd = 0.0;
+
+    // 1b) -> Boundary faces
+
+    bcount = 0;
+
+    for (iface = ins->mesh->n_int_face; iface < ins->mesh->n_face; ++iface) {
+
+        if (ins->mesh->face[iface].btag == btag) {
+
+            area = ins->mesh->face[iface].area;
+            nx   = ins->mesh->face[iface].n[0]; ny = ins->mesh->face[iface].n[1];
+
+            evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->u, ins->ubnd[bcount], value);
+            dudx = value[1]; dudy = value[2];
+
+            evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_vel[bcount], ins->v, ins->vbnd[bcount], value);
+            dvdx = value[1]; dvdy = value[2];
+
+            evaluate_boundary_face(iface, ins->mesh, &ins->clsq_bnd_prs[bcount], ins->p, ins->pbnd[bcount], value);
+            p = value[0];
+
+            fd += -(-p*nx + ins->nu*(2.*nx*dudx + ny*(dvdx+dudy)))*area;
+            fl += -(-p*ny + ins->nu*(2.*ny*dvdy + nx*(dvdx+dudy)))*area;
+        }
+
+        bcount++;
+    }
+
+    *cd = 2.*fd/(uref*uref*lref);
+    *cl = 2.*fl/(uref*uref*lref);
+}
+
+//---------------------------------------------------------------------
 // Put everything together and run the problem
 //---------------------------------------------------------------------
 
@@ -738,8 +782,7 @@ void ins_solver_run(ins_solver* ins) {
     ins_solver_compute_reconstruction_data(ins); // Compute reconstruction data
     ins_solver_assemble_ppe_matrix(ins);         // Assemble matrix for solving pressure poisson equation
 
-     ins_solver_plot_vtk(ins);
-
+    ins_solver_plot_vtk(ins);
 
     while (ins->time < ins->tend) {
 
@@ -766,7 +809,7 @@ void ins_solver_run(ins_solver* ins) {
             if (ins->residual < 1.0e-6) break;
         }
 
-        if (ins->timestep%100 == 0)
+        if (ins->timestep%500 == 0)
             ins_solver_plot_vtk(ins);
     }
 

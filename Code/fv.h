@@ -100,6 +100,7 @@ void ins_solver_solve_ppe(ins_solver*);
 void ins_solver_correct_velocity(ins_solver*);
 void ins_solver_plot_vtk(ins_solver*);
 void ins_solver_calc_residue(ins_solver*);
+void ins_solver_calc_force_coeffs(ins_solver*, int, double, double, double*, double*);
 void ins_solver_run(ins_solver*);
 void ins_solver_free(ins_solver*);
 
